@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Função de ajuda
+function FHelp {
+    clear
+    echo "Uso: $0 -j <input> -n <ntasks> [-x]"
+    echo "  -j <input> : Arquivo de entrada (obrigatório)"
+    echo "  -n <ntasks> : Número de tarefas MPI (padrão = 10)"
+    echo "  -x : Ativa o uso exclusivo do nó (--exclusive)"
+    echo "  -h : Exibe esta mensagem de ajuda"
+    exit 1
+}
+
+# Valores padrão
+ntasks=6
+exclusive=true
+
+# Processar argumentos
+while getopts "j:n:xh" opt; do
+    case $opt in
+        j) job=$OPTARG ;;
+        n) ntasks=$OPTARG ;;
+        x) exclusive=false ;;
+        h) FHelp ;;
+        *) FHelp ;;
+    esac
+done
+
+# Verificar se o arquivo de entrada foi especificado
+if [ -z "$job" ]; then
+    echo "Erro: Arquivo de entrada não especificado."
+    FHelp
+fi
+
+# Nome do job baseado no arquivo de entrada
+job_name=$(basename "$job" .inp)
+
+# Configuração do SLURM
+sbatch <<EOL
+#!/bin/bash
+#SBATCH --nodes=1
+#SBATCH --ntasks=$ntasks
+$( [ "$exclusive" = true ] && echo "#SBATCH --exclusive" )
+#SBATCH -p LocalQ
+#SBATCH -J "$job_name"
+#SBATCH --time=300:00:00
+
+/media/mateus/2ndisk/orca_6_0_1/orca $job > ${job_name}.out
+EOL
